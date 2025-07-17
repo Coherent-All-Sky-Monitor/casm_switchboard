@@ -16,7 +16,8 @@ ansible-playbook -i inventory/hosts.ini playbooks/show_switch_interfaces.yml
 or
 
 ```sh
-ansible switch -i inventory/hosts.ini -m command -a "ip link show swp10" -m command -a "nv show interface swp49"
+ansible switch -i inventory/hosts.ini -m command -a "ip link show swp10"
+ansible switch -i inventory/hosts.ini -m command -a "nv show interface swp49"
 ```
 or for the node
 
