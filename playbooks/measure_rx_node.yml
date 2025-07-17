@@ -35,14 +35,15 @@
         rx_packet_rate: "{{ (rx_packets_end | float - rx_packets_start | float) / interval | float }}"
         rx_mb_rate: "{{ ((rx_bytes_end | float - rx_bytes_start | float) / 1024 / 1024) / (interval | float) }}"
 
-
-
-    - name: Show RX statistics and rates
-      debug:
-          msg: |-
-            Interface:             {{ iface }}
-            Interval:              {{ interval }} seconds
-            RX Packets start/end:  {{ '{:,}'.format(rx_packets_start|int) }} / {{ '{:,}'.format(rx_packets_end|int) }}
-            RX Bytes start/end:    {{ '{:,}'.format(rx_bytes_start|int) }} / {{ '{:,}'.format(rx_bytes_end|int) }}
-            Packet receive rate:   {{ '%0.2f' % (rx_packet_rate|float) }} packets/sec
-            Data receive rate:     {{ '%0.2f' % (rx_mb_rate|float) }} MB/sec
+    - set_fact:
+        rx_stats:
+          iface: "{{ iface }}"
+          interval: "{{ interval }}"
+          rx_packets_start: "{{ rx_packets_start }}"
+          rx_packets_end: "{{ rx_packets_end }}"
+          rx_bytes_start: "{{ rx_bytes_start }}"
+          rx_bytes_end: "{{ rx_bytes_end }}"
+          rx_packet_rate: "{{ rx_packet_rate }}"
+          rx_mb_rate: "{{ rx_mb_rate }}"
+    - debug:
+        var: rx_stats
