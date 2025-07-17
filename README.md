@@ -4,7 +4,7 @@
 
 ## Structure
 
-- `inventory/hosts.ini` — CASM switch inventory
+- `inventory/hosts.ini` — CASM network inventory
 - `playbooks/` — Playbooks to show and manage switch state
 
 ## Usage
