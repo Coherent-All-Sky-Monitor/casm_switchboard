@@ -1,0 +1,48 @@
+---
+- name: Measure RX packet and data rate on a given interface
+  gather_facts: false
+  hosts: "node0"
+  vars:
+    iface: "eth0"      # <-- Set the interface here!
+    interval: 5        # <-- Measurement interval in seconds
+
+  tasks:
+    - name: Get initial RX packets and bytes
+      shell: |
+        cat /sys/class/net/{{ iface }}/statistics/rx_packets
+        cat /sys/class/net/{{ iface }}/statistics/rx_bytes
+      register: rx_first
+
+    - name: Wait specified interval
+      pause:
+        seconds: "{{ interval }}"
+
+    - name: Get RX packets and bytes after interval
+      shell: |
+        cat /sys/class/net/{{ iface }}/statistics/rx_packets
+        cat /sys/class/net/{{ iface }}/statistics/rx_bytes
+      register: rx_second
+
+    - name: Parse packet and byte counters
+      set_fact:
+        rx_packets_start: "{{ rx_first.stdout_lines[0] | int }}"
+        rx_bytes_start:   "{{ rx_first.stdout_lines[1] | int }}"
+        rx_packets_end:   "{{ rx_second.stdout_lines[0] | int }}"
+        rx_bytes_end:     "{{ rx_second.stdout_lines[1] | int }}"
+
+    - name: Calculate RX rate (packets/sec and MB/sec)
+      set_fact:
+        rx_packet_rate: "{{ (rx_packets_end | float - rx_packets_start | float) / interval | float }}"
+        rx_mb_rate: "{{ ((rx_bytes_end | float - rx_bytes_start | float) / 1024 / 1024) / (interval | float) }}"
+
+
+
+    - name: Show RX statistics and rates
+      debug:
+          msg: |-
+            Interface:             {{ iface }}
+            Interval:              {{ interval }} seconds
+            RX Packets start/end:  {{ '{:,}'.format(rx_packets_start|int) }} / {{ '{:,}'.format(rx_packets_end|int) }}
+            RX Bytes start/end:    {{ '{:,}'.format(rx_bytes_start|int) }} / {{ '{:,}'.format(rx_bytes_end|int) }}
+            Packet receive rate:   {{ '%0.2f' % (rx_packet_rate|float) }} packets/sec
+            Data receive rate:     {{ '%0.2f' % (rx_mb_rate|float) }} MB/sec

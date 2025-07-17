@@ -1,6 +1,6 @@
 ---
 - name: Show detailed interface summary on Cumulus Linux switch
-  hosts: cumulus
+  hosts: switch
   gather_facts: false
 
   tasks:
