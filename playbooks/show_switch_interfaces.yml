@@ -1,0 +1,48 @@
+---
+- name: Show detailed interface summary on Cumulus Linux switch
+  hosts: cumulus
+  gather_facts: false
+
+  tasks:
+    - name: Gather detailed interface info (table form)
+      shell: |
+        printf "%-15s %-6s %-18s %-6s %-10s %-8s %-20s %-10s\n" "NAME" "STATE" "IP-ADDR" "MTU" "TYPE" "SPEED" "MAC" "BRIDGE"
+        for IF in $(ip -o link show | awk -F': ' '{print $2}' | grep -v '^lo$'); do
+            STATE=$(cat /sys/class/net/$IF/operstate)
+            MTU=$(cat /sys/class/net/$IF/mtu)
+            IPADDR=$(ip -4 -o addr show dev "$IF" | awk '{print $4}' | paste -sd "," -)
+            TYPE=$(cat /sys/class/net/$IF/type 2>/dev/null)
+            [ "$TYPE" = "1" ] && TYPE=ether
+            [ "$TYPE" = "512" ] && TYPE=bridge
+            [ "$TYPE" = "772" ] && TYPE=loopback
+            [ "$TYPE" = "32" ] && TYPE=ipip
+            if [ -f "/sys/class/net/$IF/speed" ]; then
+                SPEED=$(cat /sys/class/net/$IF/speed 2>/dev/null)
+                if [ -n "$SPEED" ] && [ "$SPEED" -gt 0 ]; then
+                    if [ "$SPEED" -ge 1000 ]; then
+                        SPEED=$(awk "BEGIN {printf \"%.1fGb/s\", $SPEED/1000}")
+                    else
+                        SPEED="${SPEED}Mb/s"
+                    fi
+                else
+                    SPEED="N/A"
+                fi
+            else
+                SPEED="N/A"
+            fi
+            MACADDR=$(cat /sys/class/net/$IF/address)
+            # Figure out bridge "membership"/master (if any)
+            if [ -L "/sys/class/net/$IF/master" ]; then
+                BRIDGE=$(basename "$(readlink /sys/class/net/$IF/master)")
+            else
+                BRIDGE="N/A"
+            fi
+            printf "%-15s %-6s %-18s %-6s %-10s %-8s %-20s %-10s\n" "$IF" "$STATE" "${IPADDR:-N/A}" "$MTU" "$TYPE" "$SPEED" "$MACADDR" "$BRIDGE"
+        done
+      args:
+        executable: /bin/bash
+      register: ifconfig_output
+
+    - name: Print detailed interface summary
+      debug:
+        msg: "{{ ifconfig_output.stdout_lines }}"
