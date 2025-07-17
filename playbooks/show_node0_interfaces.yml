@@ -1,0 +1,37 @@
+---
+- name: Show interfaces on the casm_n0
+  hosts: node0
+  gather_facts: false
+
+  tasks:
+    - name: Show interface info (excluding lo)
+      shell: |
+        printf "%-15s %-6s %-18s %-6s %-8s %-20s\n" "NAME" "STATE" "IP-ADDR" "MTU" "SPEED" "MAC"
+        for IF in $(ip -o link show | awk -F': ' '{print $2}' | grep -v '^lo$'); do
+            STATE=$(cat /sys/class/net/$IF/operstate)
+            MTU=$(cat /sys/class/net/$IF/mtu)
+            IPADDR=$(ip -4 -o addr show dev "$IF" | awk '{print $4}' | paste -sd "," -)
+            if [ -f "/sys/class/net/$IF/speed" ]; then
+                SPEED_VAL=$(cat /sys/class/net/$IF/speed 2>/dev/null)
+                if [ -n "$SPEED_VAL" ] && [ "$SPEED_VAL" -gt 0 ] 2>/dev/null; then
+                    if [ "$SPEED_VAL" -ge 1000 ]; then
+                        SPEED=$(awk "BEGIN {printf \"%.1fGb/s\", $SPEED_VAL/1000}")
+                    else
+                        SPEED="${SPEED_VAL}Mb/s"
+                    fi
+                else
+                    SPEED="N/A"
+                fi
+            else
+                SPEED="N/A"
+            fi
+            MACADDR=$(cat /sys/class/net/$IF/address)
+            printf "%-15s %-6s %-18s %-6s %-8s %-20s\n" "$IF" "$STATE" "${IPADDR:-N/A}" "$MTU" "$SPEED" "$MACADDR"
+        done
+      args:
+        executable: /bin/bash
+      register: iface_out
+
+    - name: Print interface summary for the server
+      debug:
+        msg: "{{ iface_out.stdout_lines }}"
